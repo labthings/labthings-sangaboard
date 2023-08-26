@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 from fastapi import HTTPException
 
 
@@ -94,7 +95,8 @@ class SangaboardThing(Thing):
             # Skip the lock - because we need to write **before** the current query
             # finishes. This merits further careful thought for thread safety.
             # TODO: more robust aborts
+            logging.warning("Aborting move: this is an experimental feature!")
             tc = self._sangaboard.termination_character
-            self._sangaboard._ser.write(("abort" + tc).encode())
+            self._sangaboard._ser.write(("stop" + tc).encode())
         else:
             raise HTTPException(status_code=409, detail="Stage is not moving.")
