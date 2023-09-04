@@ -91,7 +91,9 @@ class SangaboardThing(Thing):
         with self.sangaboard():
             self.update_position()
             displacement = {
-                k: v - self.position[k] for k, v in kwargs
+                k: int(v) - self.position[k] 
+                for k, v in kwargs.items()
+                if k in self.axis_names
             }
             self.move_relative(**displacement)
 
