@@ -68,6 +68,13 @@ class SangaboardThing(Thing):
             self.position = {
                 k: v for (k, v) in zip(self.axis_names, sb.position)
             }
+
+    @property
+    def thing_state(self):
+        """Summary metadata describing the current state of the stage"""
+        return {
+            "position": self.position
+        }
     
     @thing_action
     def move_relative(self, **kwargs: Mapping[str, int]):
