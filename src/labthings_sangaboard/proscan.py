@@ -63,6 +63,13 @@ class ProScan(Thing, ExtensibleSerialInstrument):
         "Current position of the stage"
         x, y, z = self.parsed_query('P', r"%f,%f,%f")
         return {"x": x, "y": y, "z": z}
+    
+    @property
+    def thing_state(self):
+        """Summary metadata describing the current state of the stage"""
+        return {
+            "position": self.position
+        }
 
     moving = PropertyDescriptor(
         bool,
@@ -90,9 +97,12 @@ class ProScan(Thing, ExtensibleSerialInstrument):
     @thing_action
     def move_absolute(self, **kwargs: Mapping[str, int]):
         """Make an absolute move. Keyword arguments should be axis names."""
-        with self._action_lock:
+        with self.sangaboard():
+            self.update_position()
             displacement = {
-                k: v - self.position[k] for k, v in kwargs
+                k: int(v) - self.position[k] 
+                for k, v in kwargs.items()
+                if k in self.axis_names
             }
             self.move_relative(**displacement)
 
