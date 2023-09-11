@@ -114,6 +114,26 @@ class ProScan(Thing, ExtensibleSerialInstrument):
             self.query("K")
         else:
             raise HTTPException(status_code=409, detail="Stage is not moving.")
+    
+    @thing_property
+    def nosepiece_position(self):
+        """The currently-selected objective (causes a serial query)"""
+        return self.int_query("NP")
+
+    @thing_property
+    def nosepiece_is_moving(self):
+        """true if the nosepiece is in motion (causes a direct hardware query)"""
+        return self.int_query("NP $")>0
+    
+    @thing_action
+    def move_nosepiece(self, objective_number: int):
+        """Select an objective using the nosepiece."""
+        with self._action_lock:
+            self.moving = True
+            self.query(f"NP {objective_number}")
+            while self.nosepiece_is_moving:
+                time.sleep(0.05)
+            self.moving=False
         
     @thing_action
     def query(self, message: str, termination_line: Optional[str]=None) -> str:
