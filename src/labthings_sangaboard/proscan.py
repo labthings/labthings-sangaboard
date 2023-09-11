@@ -97,10 +97,10 @@ class ProScan(Thing, ExtensibleSerialInstrument):
     @thing_action
     def move_absolute(self, **kwargs: Mapping[str, int]):
         """Make an absolute move. Keyword arguments should be axis names."""
-        with self.sangaboard():
-            self.update_position()
+        with self._action_lock:
+            current_pos = self.position
             displacement = {
-                k: int(v) - self.position[k] 
+                k: int(v) - current_pos[k] 
                 for k, v in kwargs.items()
                 if k in self.axis_names
             }
