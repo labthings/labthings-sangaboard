@@ -109,3 +109,15 @@ class SangaboardThing(Thing):
             self._sangaboard._ser.write(("stop" + tc).encode())
         else:
             raise HTTPException(status_code=409, detail="Stage is not moving.")
+        
+    @thing_action
+    def set_zero_position(self):
+        """Make the current position zero in all axes
+        
+        This action does not move the stage, but resets the position to zero.
+        It is intended for use after manually or automatically recentring the
+        stage.
+        """
+        with self.sangaboard() as sb:
+            sb.zero_position()
+        self.update_position()
