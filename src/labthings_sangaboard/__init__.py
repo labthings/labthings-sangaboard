@@ -95,8 +95,12 @@ class SangaboardThing(Thing):
                 else:
                     while sb.query("moving?") == "true":
                         cancel.sleep(0.1)
-            except InvocationCancelledError:
+            except InvocationCancelledError as e:
+                # If the move has been cancelled, stop it but don't handle the exception.
+                # We need the exception to propagate in order to stop any calling tasks,
+                # and to mark the invocation as "cancelled" rather than stopped.
                 sb.query("stop")
+                raise e
             finally:
                 self.moving=False
                 self.update_position()
