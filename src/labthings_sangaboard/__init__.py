@@ -6,11 +6,13 @@ from fastapi import HTTPException
 from labthings_fastapi.descriptors.property import PropertyDescriptor
 from labthings_fastapi.thing import Thing
 from labthings_fastapi.decorators import thing_action, thing_property
+from labthings_fastapi.dependencies.invocation import CancelHook, InvocationCancelledError
 from typing import Iterator
 from contextlib import contextmanager
 from collections.abc import Sequence, Mapping
 import sangaboard
 import threading
+import numpy as np
 
 class SangaboardThing(Thing):
     _axis_names = ("x", "y", "z")  # TODO: handle 4th axis gracefully
@@ -26,6 +28,10 @@ class SangaboardThing(Thing):
     def __enter__(self):
         self._sangaboard = sangaboard.Sangaboard(**self.sangaboard_kwargs)
         self._sangaboard_lock = threading.RLock()
+        with self.sangaboard() as sb:
+            if sb.version_tuple[0] != 1:
+                raise RuntimeError("labthings-sangaboard requires firmware v1")
+            sb.query("blocking_moves false")
         self.update_position()
 
     def __exit__(self, _exc_type, _exc_value, _traceback):
@@ -77,16 +83,26 @@ class SangaboardThing(Thing):
         }
     
     @thing_action
-    def move_relative(self, **kwargs: Mapping[str, int]):
+    def move_relative(self, cancel: CancelHook, block_cancellation: bool=False, **kwargs: Mapping[str, int]):
         """Make a relative move. Keyword arguments should be axis names."""
+        displacement = [kwargs.get(k, 0) for k in self.axis_names]
         with self.sangaboard() as sb:
             self.moving = True
-            sb.move_rel([kwargs.get(k, 0) for k in self.axis_names])
-            self.moving=False
-            self.update_position()
+            try:
+                sb.move_rel(displacement)
+                if block_cancellation:
+                    sb.query("notify_on_stop")
+                else:
+                    while sb.query("moving?") == "true":
+                        cancel.sleep(0.1)
+            except InvocationCancelledError:
+                sb.query("stop")
+            finally:
+                self.moving=False
+                self.update_position()
 
     @thing_action
-    def move_absolute(self, **kwargs: Mapping[str, int]):
+    def move_absolute(self, cancel: CancelHook, block_cancellation: bool=False, **kwargs: Mapping[str, int]):
         """Make an absolute move. Keyword arguments should be axis names."""
         with self.sangaboard():
             self.update_position()
@@ -95,7 +111,7 @@ class SangaboardThing(Thing):
                 for k, v in kwargs.items()
                 if k in self.axis_names
             }
-            self.move_relative(**displacement)
+            self.move_relative(cancel, block_cancellation=block_cancellation, **displacement)
 
     @thing_action
     def abort_move(self):
