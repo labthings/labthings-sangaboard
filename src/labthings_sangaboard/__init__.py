@@ -7,11 +7,12 @@ from labthings_fastapi.descriptors.property import PropertyDescriptor
 from labthings_fastapi.thing import Thing
 from labthings_fastapi.decorators import thing_action, thing_property
 from labthings_fastapi.dependencies.invocation import CancelHook, InvocationCancelledError
-from typing import Iterator
+from typing import Iterator, Literal
 from contextlib import contextmanager
 from collections.abc import Sequence, Mapping
 import sangaboard
 import threading
+import time
 import numpy as np
 
 class SangaboardThing(Thing):
@@ -141,3 +142,31 @@ class SangaboardThing(Thing):
         with self.sangaboard() as sb:
             sb.zero_position()
         self.update_position()
+
+    @thing_action
+    def flash_led(
+        self,
+        number_of_flashes: int = 10,
+        dt: float = 0.5,
+        led_channel: Literal["cc"]="cc",
+    ) -> None:
+        """Flash the LED to identify the board
+
+        This is intended to be useful in situations where there are multiple
+        Sangaboards in use, and it is necessary to identify which one is 
+        being addressed.
+        """
+        with self.sangaboard() as sb:
+            r = sb.query("led_cc?")
+            if not r.startswith('CC LED:'):
+                raise IOError("The sangaboard does not support LED control")
+            # This suffers from repeated reads and writes decreasing it, so for
+            # now, I'll fix it at the default value.
+            # TODO: proper LED control from python
+            #on_brightness = float(r[7:])
+            on_brightness = 0.32
+            for i in range(number_of_flashes):
+                sb.query("led_cc 0")
+                time.sleep(dt)
+                sb.query(f"led_cc {on_brightness}")
+                time.sleep(dt)
