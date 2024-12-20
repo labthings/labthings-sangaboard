@@ -1,6 +1,6 @@
 [project]
 name = "labthings-sangaboard"
-version = "0.0.1"
+version = "0.0.1-proscan0"
 authors = [
   { name="Richard Bowman", email="richard.bowman@cantab.net" },
 ]
