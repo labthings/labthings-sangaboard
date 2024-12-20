@@ -93,9 +93,9 @@ class ProScan(Thing, ExtensibleSerialInstrument):
                 try:
                     while self.is_moving:
                         cancel.sleep(0.05)
-                except InvocationCancelledError:
-                    logging.info("Aborting move due to invocation cancellation, using `I`,")
+                except InvocationCancelledError as e:
                     self.query("I")
+                    raise e
             self.moving=False
 
     @thing_property
