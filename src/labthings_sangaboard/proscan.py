@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from labthings_fastapi.descriptors.property import PropertyDescriptor
 from labthings_fastapi.thing import Thing
 from labthings_fastapi.decorators import thing_action, thing_property
+from labthings_fastapi.dependencies.invocation import CancelHook, InvocationCancelledError
 from typing import Iterator, Literal, Optional
 from contextlib import contextmanager
 from collections.abc import Sequence, Mapping
@@ -80,13 +81,21 @@ class ProScan(Thing, ExtensibleSerialInstrument):
     )
     
     @thing_action
-    def move_relative(self, x: Optional[int]=0, y: Optional[int]=0, z: Optional[int]=0):
+    def move_relative(self, cancel: CancelHook, block_cancellation: bool=False, x: Optional[int]=0, y: Optional[int]=0, z: Optional[int]=0):
         """Make a relative move. Keyword arguments should be axis names."""
         with self._action_lock:
             self.moving = True
             self.query(f"GR {x} {y} {z}")
-            while self.is_moving:
-                time.sleep(0.05)
+            if block_cancellation:
+                while self.is_moving:
+                    time.sleep(0.05)
+            else:
+                try:
+                    while self.is_moving:
+                        cancel.sleep(0.05)
+                except InvocationCancelledError:
+                    logging.info("Aborting move due to invocation cancellation, using `I`,")
+                    self.query("I")
             self.moving=False
 
     @thing_property
@@ -95,7 +104,7 @@ class ProScan(Thing, ExtensibleSerialInstrument):
         return self.int_query("$,S")>0
 
     @thing_action
-    def move_absolute(self, **kwargs: Mapping[str, int]):
+    def move_absolute(self, cancel: CancelHook, block_cancellation: bool=False, **kwargs: Mapping[str, int]):
         """Make an absolute move. Keyword arguments should be axis names."""
         with self._action_lock:
             current_pos = self.position
@@ -104,7 +113,7 @@ class ProScan(Thing, ExtensibleSerialInstrument):
                 for k, v in kwargs.items()
                 if k in self.axis_names
             }
-            self.move_relative(**displacement)
+            self.move_relative(cancel, block_cancellation=block_cancellation, **displacement)
 
     @thing_action
     def abort_move(self):
