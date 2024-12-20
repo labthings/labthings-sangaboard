@@ -33,13 +33,14 @@ jobs:
 
     publish-to-testpypi:
       name: Publish Python 🐍 distribution 📦 to TestPyPI
+      if: startsWith(github.ref, 'refs/tags/testpypi')  # only publish to PyPI on test tag pushes
       needs:
       - build
       runs-on: ubuntu-latest
   
       environment:
         name: testpypi
-        url: https://test.pypi.org/p/labthings-picamera2
+        url: https://test.pypi.org/p/labthings-sangaboard
   
       permissions:
         id-token: write  # IMPORTANT: mandatory for trusted publishing
@@ -64,7 +65,7 @@ jobs:
         runs-on: ubuntu-latest
         environment:
             name: pypi
-            url: https://pypi.org/p/labthings-picamera2
+            url: https://pypi.org/p/labthings-sangaboard
         permissions:
             id-token: write  # IMPORTANT: mandatory for trusted publishing
         steps:
